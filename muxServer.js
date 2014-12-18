@@ -126,11 +126,21 @@ wss.on('connection', function(ws) {
 				var requesterId = parsedMessage.requesterId;
 				var response = parsedMessage.response;
 
+				handleTakeover(streamId, requesterId);
+
 				var callbackRecord = takeoverCallbacks.find(function(record) {
 					return record.streamId === streamId && record.requesterId === requesterId;
 				});
 
+				var idx = takeoverCallbacks.indexOf(callbackRecord);
+				if (idx >= 0) takeoverCallbacks.splice(idx, 1);
+
 				callbackRecord.callback(response);
+				break;
+			case 'release-stream':
+				var streamId = parsedMessage.streamId;
+
+				releaseStream(streamId);
 				break;
 			case 'unsubscribe':
 				var streamId = parsedMessage.streamId;
@@ -373,6 +383,25 @@ function requestTakeover(requesterId, streamId, callback) {
 		requesterId: requesterId,
 		callback: callback
 	});
+}
+
+function handleTakeover(streamId, newPublisherId) {
+	var stream = getStreamById(streamId);
+
+	stream.currentPublisherId = newPublisherId;
+}
+
+function releaseStream(streamId) {
+	var stream = getStreamById(streamId);
+
+	stream.currentPublisherId = stream.mainPublisherId;
+
+	var message = {
+		type: 'continue-streaming',
+		streamId: streamId
+	}
+
+	sendMessageTo(stream.mainPublisherId, message);
 }
 
 function updateProgress(senderId, streamId, time) {
