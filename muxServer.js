@@ -7,6 +7,7 @@ Array.prototype.find = function (iterator, context) {
 }
 
 var fs = require('fs');
+var recorder = require('./recorder.js');
 
 // start socket server
 var port = 1234;
@@ -182,6 +183,7 @@ wss.on('connection', function(ws) {
 					imageCounter++;
 				}
 
+				recorder.recordFrame(parsedMessage);
 				// forward the message to all subscribers
 				forwardMessageToSubscribers(parsedMessage);
 		}
@@ -265,6 +267,7 @@ function subscribeToStream(clientId, streamId) {
 	// add the client to the subscribers of the stream
 	stream.subscribers.push({
 		id: clientId,
+		username: getClientById(clientId).username,
 		timecode: -1
 	});
 	console.log('Subscribed:   %s to %s', clientId, streamId);
