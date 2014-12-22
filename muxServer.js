@@ -162,6 +162,22 @@ wss.on('connection', function(ws) {
 				var time = parsedMessage.progressTime;
 				updateProgress(senderId, streamId, time);
 				break;
+			case 'request-recorded-data':
+				var senderId = parsedMessage.senderId;
+				var streamId = parsedMessage.streamId;
+				var timecode = parsedMessage.timecode;
+				var duration = parsedMessage.duration;
+				
+				var data = recorder.getFrames(streamId, timecode, duration);
+
+				var message = {
+					type: 'recorded-data',
+					streamId: streamId,
+					data: data
+				}
+
+				sendMessageTo(senderId, message);
+				break;
 			default:
 				// it's a stream chunk
 				// check whether the messages belongs to a new stream

@@ -2,7 +2,7 @@ var streamBuffers = {};
 var bufferIndexes = {};
 
 // the bigger the number, the less index entries are created
-var indexPrecision = 1000;
+var indexPrecision = 10000;
 
 function newStream(streamId) {
 	console.log('Recorder: Creating new recording buffer for Stream %s', streamId);
@@ -32,6 +32,21 @@ function recordFrame(frame) {
 function getFrames(streamId, timestamp, length) {
 	// return an array of frames from timestamp for a timespan
 	// of length seconds, or just one frame, if length not given
+
+	var buffer = streamBuffers[streamId];
+
+	// if no timestamp given, take the one from the first recoded frame
+	if (timestamp === null || timestamp === undefined) {
+		timestamp = buffer[0].timestamp;
+	}
+
+	// if length equals 'all', set it to the duration from timestamp 
+	// to the end of the recording
+	if (length === 'all') {
+		// calculate the length of the whole recording in seconds
+		length = (buffer[buffer.length - 1].timestamp - timestamp) / 1000;
+	}
+
 	var indexKey = getIndexKey(timestamp);
 	var idx = bufferIndexes[streamId][indexKey];
 
@@ -40,7 +55,6 @@ function getFrames(streamId, timestamp, length) {
 		return;
 	}
 
-	var buffer = streamBuffers[streamId];
 	// From idx position in buffer, run through the buffer until we find
 	// a frame, with a timestamp greater than the one we are looking for.
 	// The frame before that is the best match for the requested timestamp
@@ -55,7 +69,7 @@ function getFrames(streamId, timestamp, length) {
 		idx++;
 		// run through the buffer and collect all frames, that have a timestamp
 		// in the requested time frame
-		while (buffer[idx].timestamp <= (timestamp + length * 1000)) {
+		while (buffer[idx].timestamp < (timestamp + length * 1000)) {
 			frames.push(buffer[idx]);
 			idx++;
 		}
