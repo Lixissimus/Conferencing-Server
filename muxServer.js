@@ -25,11 +25,11 @@ var clients = [];
 
 // store published streams in here
 //  ***
-// | id | mainPublisherId | currentPublisherId | type | subscribers |
-// |----|-----------------|--------------------|------|-------------|
-// 																											- id
-// 																											- username
-// 																											- timecode
+// | id | mainPublisherId | currentPublisherId | type | starttime | subscribers |
+// |----|-----------------|--------------------|------|-----------|-------------|
+// 																																	- id
+// 																																	- username
+// 																																	- timecode
 //  ***
 var streams = [];
 
@@ -165,14 +165,23 @@ wss.on('connection', function(ws) {
 			case 'request-recorded-data':
 				var senderId = parsedMessage.senderId;
 				var streamId = parsedMessage.streamId;
+				var requestId = parsedMessage.requestId;
+				var amount = parsedMessage.amount;
+				var before = parsedMessage.before;
 				var timecode = parsedMessage.timecode;
 				var duration = parsedMessage.duration;
 				
-				var data = recorder.getFrames(streamId, timecode, duration);
+				var data;
+				if (amount) {
+					data = recorder.getAmountOfFrames(streamId, before, amount);
+				} else {
+					data = recorder.getDurationOfFrames(streamId, timecode, duration);
+				}
 
 				var message = {
 					type: 'recorded-data',
 					streamId: streamId,
+					requestId: requestId,
 					data: data
 				}
 
@@ -188,16 +197,16 @@ wss.on('connection', function(ws) {
 				}
 
 				// recording (quick and dirty)
-				if (parsedMessage.type === 'image' && parsedMessage.record) {
-					var imageURL = parsedMessage.image;
-					if (parsedMessage.lzwEncoded) {
-						imageURL = lzwDecode(imageURL);
-					}
-					var imageData = imageURL.split(',')[1];
-					var buffer = new Buffer(imageData, 'base64');
-					fs.writeFile('images/data' + getCounter() + '.webp', buffer);
-					imageCounter++;
-				}
+				// if (parsedMessage.type === 'image' && parsedMessage.record) {
+				// 	var imageURL = parsedMessage.image;
+				// 	if (parsedMessage.lzwEncoded) {
+				// 		imageURL = lzwDecode(imageURL);
+				// 	}
+				// 	var imageData = imageURL.split(',')[1];
+				// 	var buffer = new Buffer(imageData, 'base64');
+				// 	fs.writeFile('images/data' + getCounter() + '.webp', buffer);
+				// 	imageCounter++;
+				// }
 
 				recorder.recordFrame(parsedMessage);
 				// forward the message to all subscribers
@@ -331,6 +340,7 @@ function registerStreamIfUnknown(message) {
 		type: message.type,
 		mainPublisherId: message.senderId,
 		currentPublisherId: message.senderId,
+		starttime: message.timestamp,
 		subscribers: []
 	}
 

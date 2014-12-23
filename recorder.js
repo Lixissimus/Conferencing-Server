@@ -29,7 +29,7 @@ function recordFrame(frame) {
 	}
 }
 
-function getFrames(streamId, timestamp, length) {
+function getDurationOfFrames(streamId, timestamp, length) {
 	// return an array of frames from timestamp for a timespan
 	// of length seconds, or just one frame, if length not given
 
@@ -38,12 +38,14 @@ function getFrames(streamId, timestamp, length) {
 	// if no timestamp given, take the one from the first recoded frame
 	if (timestamp === null || timestamp === undefined) {
 		timestamp = buffer[0].timestamp;
+	} else if (timestamp < buffer[0].timestamp) {
+
+		timestamp = buffer[0].timestamp;
 	}
 
-	// if length equals 'all', set it to the duration from timestamp 
-	// to the end of the recording
-	if (length === 'all') {
-		// calculate the length of the whole recording in seconds
+	// if length equals 'all' or the requested length exceeds the stream length, 
+	// set it to the max available length
+	if (length === 'all' || timestamp + (length * 1000) > buffer[buffer.length - 1].timestamp) {
 		length = (buffer[buffer.length - 1].timestamp - timestamp) / 1000;
 	}
 
@@ -56,9 +58,8 @@ function getFrames(streamId, timestamp, length) {
 	}
 
 	// From idx position in buffer, run through the buffer until we find
-	// a frame, with a timestamp greater than the one we are looking for.
-	// The frame before that is the best match for the requested timestamp
-	while (buffer[idx].timestamp < timestamp) {
+	// a frame, with a timestamp >= the one we are looking for.
+	while (buffer[idx] && buffer[idx].timestamp < timestamp) {
 		idx++;
 	}
 
@@ -78,6 +79,29 @@ function getFrames(streamId, timestamp, length) {
 	return frames;
 }
 
+function getAmountOfFrames(streamId, before, amount) {
+	// returns amount of the most recently recorded frames before the before-timestamp
+	var buffer = streamBuffers[streamId];
+
+	if (!before) {
+		before = buffer[buffer.length-1].timestamp;
+	}
+
+	var indexKey = getIndexKey(before);
+	var idx = bufferIndexes[streamId][indexKey];
+
+	while (buffer[idx] && buffer[idx].timestamp <= before) {
+		idx++;
+	}
+	idx--;
+
+	if (!amount || amount > idx) {
+		amount = idx;
+	}
+
+	return buffer.slice(idx - amount, idx);
+}
+
 function getIndexKey(timestamp) {
 	return Math.floor(timestamp / indexPrecision) * indexPrecision;
 }
@@ -88,5 +112,6 @@ function getIndexKey(timestamp) {
 
 module.exports = {
 	recordFrame: recordFrame,
-	getFrames: getFrames
+	getDurationOfFrames: getDurationOfFrames,
+	getAmountOfFrames: getAmountOfFrames
 }
