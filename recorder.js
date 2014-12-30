@@ -70,7 +70,7 @@ function getDurationOfFrames(streamId, timestamp, length) {
 		idx++;
 		// run through the buffer and collect all frames, that have a timestamp
 		// in the requested time frame
-		while (buffer[idx].timestamp < (timestamp + length * 1000)) {
+		while (buffer[idx] && buffer[idx].timestamp < (timestamp + length * 1000)) {
 			frames.push(buffer[idx]);
 			idx++;
 		}
