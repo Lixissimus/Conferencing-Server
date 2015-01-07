@@ -196,18 +196,7 @@ wss.on('connection', function(ws) {
 					return;
 				}
 
-				// recording (quick and dirty)
-				// if (parsedMessage.type === 'image' && parsedMessage.record) {
-				// 	var imageURL = parsedMessage.image;
-				// 	if (parsedMessage.lzwEncoded) {
-				// 		imageURL = lzwDecode(imageURL);
-				// 	}
-				// 	var imageData = imageURL.split(',')[1];
-				// 	var buffer = new Buffer(imageData, 'base64');
-				// 	fs.writeFile('images/data' + getCounter() + '.webp', buffer);
-				// 	imageCounter++;
-				// }
-
+				// record media frame
 				recorder.recordFrame(parsedMessage);
 				// forward the message to all subscribers
 				forwardMessageToSubscribers(parsedMessage);
