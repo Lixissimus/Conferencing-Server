@@ -37,7 +37,6 @@ var streams = [];
 var takeoverCallbacks = [];
 
 var streamId = 0;
-var imageCounter = 0;
 
 setInterval(broadcastProgress, 1000);
 
@@ -561,12 +560,4 @@ function lzwDecode(string) {
         oldPhrase = phrase;
     }
     return out.join("");
-}
-
-function getCounter() {
-	var s = imageCounter + '';
-	while (s.length < 5) {
-		s = 0 + s;
-	}
-	return s;
 }
