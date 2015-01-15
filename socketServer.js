@@ -1,4 +1,3 @@
-var fs = require('fs');
 var router = require('./router.js');
 var logic = require('./logic.js');
 
@@ -23,14 +22,14 @@ wss.on('connection', function(ws) {
 	ws.on('message', function(message) {
 		try {
 			message = JSON.parse(message);
-		} catch() {
+		} catch (err) {
 			console.log('Error while parsing message');
 			return;
 		}
 
 		// add a timestamp to each incoming message
 		message.timestamp = Date.now();
-
+		// forward it to the router
 		router.handleMessage(ws, message);
 	});
 });

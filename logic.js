@@ -31,7 +31,7 @@ var takeoverCallbacks = [];
 
 setInterval(broadcastProgress, 1000);
 
-// --- public functions ---
+// --- public functions --- //
 
 function helloNetwork(ws, message) {
 	registerSenderOf(ws, message);
@@ -58,25 +58,25 @@ function helloNetwork(ws, message) {
 	});
 }
 
-function requestStreamId(ws) {
+function requestStreamId(clientId) {
 	var id = requestNewStreamId();
-	var obj = {
+	var message = {
 		type: 'stream-id',
 		id: id
 	}
-	var message = JSON.stringify(obj);
-	ws.send(message);
+
+	sendMessageTo(clientId, message);
 }
 
-function subscribe(ws, clientId, streamId) {
+function subscribe(clientId, streamId) {
 	var res = subscribeToStream(clientId, streamId);
 	if (res === 'stream-unknown') {
-		var obj = {
+		var message = {
 			type: 'error',
 			message: 'stream unknown - ' + streamId
 		}
-		var message = JSON.stringify(obj);
-		ws.send(message);
+
+		sendMessageTo(clientId, message);
 	}
 }
 
@@ -188,7 +188,7 @@ function updateProgress(clientId, streamId, time) {
 	subscriberRecord.timecode = time;
 }
 
-function requestAmountOfFrames(requestId, streamId, before, amount) {
+function requestAmountOfFrames(requestId, senderId, streamId, before, amount) {
 	var data = recorder.getAmountOfFrames(streamId, before, amount);
 
 	var message = {
@@ -201,7 +201,7 @@ function requestAmountOfFrames(requestId, streamId, before, amount) {
 	sendMessageTo(senderId, message);
 }
 
-function requestDurationOfFrames(requestId, streamId, before, amount) {
+function requestDurationOfFrames(requestId, senderId, streamId, before, amount) {
 	var data = recorder.getDurationOfFrames(streamId, before, amount);
 
 	var message = {
@@ -222,7 +222,7 @@ function handleStreamChunk(message) {
 }
 
 
-// --- internal functions ---
+// --- private functions --- //
 
 function broadcastProgress() {
 	streams.forEach(function(stream) {
@@ -450,13 +450,19 @@ function registerStreamIfUnknown(message) {
 }
 
 
-// --- exported functions ---
+// --- exported functions --- //
 
 module.exports = {
 	helloNetwork: helloNetwork,
 	requestStreamId: requestStreamId,
 	subscribe: subscribe,
+	unsubscribe: unsubscribe,
+	unpublish: unpublish,
 	requestTakeover: requestTakeover,
 	responseTakeover: responseTakeover,
-	releaseStream: releaseStream
+	releaseStream: releaseStream,
+	updateProgress: updateProgress,
+	requestAmountOfFrames: requestAmountOfFrames,
+	requestDurationOfFrames: requestDurationOfFrames,
+	handleStreamChunk: handleStreamChunk
 }

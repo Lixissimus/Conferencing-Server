@@ -8,13 +8,15 @@ function handleMessage(socket, message) {
  			logic.helloNetwork(ws, message);
 			break;
 		case 'request-stream-id':
-			logic.requestStreamId(ws);
+			var senderId = message.senderId;
+
+			logic.requestStreamId(senderId);
 			break;
 		case 'subscribe':
 			var streamId = message.streamId;
 			var senderId = message.senderId;
 
-			logic.subscribe(ws, senderId, streamId);
+			logic.subscribe(senderId, streamId);
 			break;
 		case 'request-takeover':
 			var requesterId = parsedMessage.senderId;
@@ -65,9 +67,9 @@ function handleMessage(socket, message) {
 			var duration = message.duration;
 			
 			if (amount !== undefined) {
-				logic.requestAmountOfFrames(requestId, streamId, before, amount);
+				logic.requestAmountOfFrames(requestId, senderId, streamId, before, amount);
 			} else {
-				logic.requestDurationOfFrames(requestId, streamId, timecode, duration);
+				logic.requestDurationOfFrames(requestId, senderId, streamId, timecode, duration);
 			}
 			break;
 		default:
@@ -76,7 +78,7 @@ function handleMessage(socket, message) {
 }
 
 
-// --- Exported functions ---
+// --- Exported functions --- //
 
 module.exports = {
 	handleMessage: handleMessage

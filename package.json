@@ -1,7 +1,25 @@
 {
-  "name": "muxServer",
+  "name": "StreamingServer",
   "version": "1.0.0",
+  "description": "Conferencing-Server ===================",
+  "main": "socketServer.js",
+  "directories": {
+    "test": "test"
+  },
   "dependencies": {
     "ws": "^0.6.3"
-  }
+  },
+  "devDependencies": {},
+  "scripts": {
+    "start": "node socketServer.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/Lixissimus/Conferencing-Server.git"
+  },
+  "author": "Felix Wolff",
+  "bugs": {
+    "url": "https://github.com/Lixissimus/Conferencing-Server/issues"
+  },
+  "homepage": "https://github.com/Lixissimus/Conferencing-Server"
 }
