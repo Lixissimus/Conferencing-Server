@@ -18,8 +18,8 @@ var clients = [];
 // store published streams in here
 var streams = [];
 //  ***
-// | id | mainPublisherId | currentPublisherId | type | starttime | subscribers |
-// |----|-----------------|--------------------|------|-----------|-------------|
+// | id | mainPublisherId | currentPublisherId | type | starttime | subscribers | record |
+// |----|-----------------|--------------------|------|-----------|-------------|--------|
 // 																	- id
 // 																	- username
 // 																	- timecode
@@ -189,26 +189,44 @@ function updateProgress(clientId, streamId, time) {
 }
 
 function requestAmountOfFrames(requestId, senderId, streamId, before, amount) {
-	var data = recorder.getAmountOfFrames(streamId, before, amount);
+	var stream = getStreamById(streamId);
+	var message;
+	if (!stream.record) {
+		message = {
+			type: 'error',
+			message: 'stream not recorded'
+		}
+	} else {
+		var data = recorder.getAmountOfFrames(streamId, before, amount);
 
-	var message = {
-		type: 'recorded-data',
-		streamId: streamId,
-		requestId: requestId,
-		data: data
+		message = {
+			type: 'recorded-data',
+			streamId: streamId,
+			requestId: requestId,
+			data: data
+		}
 	}
 
 	sendMessageTo(senderId, message);
 }
 
 function requestDurationOfFrames(requestId, senderId, streamId, before, amount) {
-	var data = recorder.getDurationOfFrames(streamId, before, amount);
+	var stream = getStreamById(streamId);
+	var message;
+	if (!stream.record) {
+		message = {
+			type: 'error',
+			message: 'stream not recorded'
+		}
+	} else {
+		var data = recorder.getDurationOfFrames(streamId, before, amount);
 
-	var message = {
-		type: 'recorded-data',
-		streamId: streamId,
-		requestId: requestId,
-		data: data
+		message = {
+			type: 'recorded-data',
+			streamId: streamId,
+			requestId: requestId,
+			data: data
+		}
 	}
 
 	sendMessageTo(senderId, message);
@@ -217,8 +235,52 @@ function requestDurationOfFrames(requestId, senderId, streamId, before, amount) 
 function handleStreamChunk(message) {
 	registerStreamIfUnknown(message);
 
-	recorder.recordFrame(message);
 	forwardMessageToSubscribers(message);
+	
+	if (message.record) {
+		recorder.recordFrame(message);
+	}
+}
+
+function removeClient(socket) {
+	var client = clients.find(function(client) {
+		return client.socket === socket;
+	});
+
+	// collect all subscriptions of that client
+	var streamIds = [];
+	streams.forEach(function(stream) {
+		stream.subscribers.forEach(function(subscriber) {
+			if (subscriber.id === client.id) {
+				streamIds.push(stream.id);
+			}
+		});
+	});
+
+	// unsubscribe from all that streams
+	streamIds.forEach(function(streamId) {
+		unsubscribeFromStream(client.id, streamId);
+	})
+
+	// collect all published streams of that client
+	streamIds = [];
+	streams.forEach(function(stream) {
+		if (stream.mainPublisherId === client.id) {
+			streamIds.push(stream.id);
+		}
+	});
+
+	// unpublish all its streams
+	streamIds.forEach(function(streamId) {
+		unpublishStream(client.id, streamId);
+	});
+
+	// remove the client from the clients-list
+	var idx = clients.indexOf(client);
+	if (idx > -1) {
+		clients.splice(idx, 1);
+		console.log('Removed (%s) %s', client.username, client.id);
+	}
 }
 
 
@@ -424,6 +486,7 @@ function registerStreamIfUnknown(message) {
 	stream = {
 		id: message.streamId,
 		type: message.type,
+		record: message.record,
 		mainPublisherId: message.senderId,
 		currentPublisherId: message.senderId,
 		starttime: message.timestamp,
@@ -464,5 +527,6 @@ module.exports = {
 	updateProgress: updateProgress,
 	requestAmountOfFrames: requestAmountOfFrames,
 	requestDurationOfFrames: requestDurationOfFrames,
-	handleStreamChunk: handleStreamChunk
+	handleStreamChunk: handleStreamChunk,
+	removeClient: removeClient
 }
