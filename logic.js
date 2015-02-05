@@ -29,7 +29,8 @@ var streamId = 0;
 
 var takeoverCallbacks = [];
 
-setInterval(broadcastProgress, 1000);
+// dont do that for now, needs some fixes
+// setInterval(broadcastProgress, 1000);
 
 // --- public functions --- //
 
@@ -236,7 +237,7 @@ function handleStreamChunk(message) {
 	registerStreamIfUnknown(message);
 
 	forwardMessageToSubscribers(message);
-	
+
 	if (message.record) {
 		recorder.recordFrame(message);
 	}
@@ -272,7 +273,7 @@ function removeClient(socket) {
 
 	// unpublish all its streams
 	streamIds.forEach(function(streamId) {
-		unpublishStream(client.id, streamId);
+		unpublish(client.id, streamId);
 	});
 
 	// remove the client from the clients-list
