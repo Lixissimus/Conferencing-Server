@@ -350,7 +350,9 @@ function sendMessageTo(clientId, message) {
 	}
 
 	var str = JSON.stringify(message);
-	client.socket.send(str);
+	if (client.socket.readyState === client.socket.OPEN) {
+		client.socket.send(str);
+	}
 }
 
 function forwardMessageToSubscribers(message) {
@@ -363,7 +365,9 @@ function forwardMessageToSubscribers(message) {
 		var client = getClientById(subscriber.id);
 
 		// send the message to him
-		client.socket.send(JSON.stringify(message));
+		if (client.socket.readyState === client.socket.OPEN) {
+			client.socket.send(JSON.stringify(message));
+		}
 	});
 }
 
