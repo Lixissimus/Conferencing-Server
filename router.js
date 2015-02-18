@@ -7,6 +7,9 @@ function handleMessage(socket, message) {
  		case 'hello-network':
  			logic.helloNetwork(ws, message);
 			break;
+		case 'heartbeat':
+			logic.handleHeartbeatResponse(message.senderId);
+			break;
 		case 'request-stream-id':
 			var senderId = message.senderId;
 

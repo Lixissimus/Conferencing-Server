@@ -25,6 +25,10 @@ var streams = [];
 // 																	- timecode
 //  ***
 
+var heartbeatAttemptThreshold = 3;
+var heartbeatTimeout = 5 * 1000;
+var heartbeatTime = 5 * 1000;
+
 var streamId = 0;
 
 var takeoverCallbacks = [];
@@ -35,7 +39,7 @@ var takeoverCallbacks = [];
 // --- public functions --- //
 
 function helloNetwork(ws, message) {
-	registerSenderOf(ws, message);
+	var newClient = registerSenderOf(ws, message);
 	// send information about available streams
 	var obj = {
 		type: 'initial-information',
@@ -53,10 +57,24 @@ function helloNetwork(ws, message) {
 		}
 	});
 
+	// initiate heartbeats
+	sendHeartbeat(newClient.id, 1);
+
 	broadcast({
 		type: 'new-clients',
 		clients: clientInfos
 	});
+}
+
+function handleHeartbeatResponse(clientId) {
+	var client = getClientById(clientId);
+	// stop the timer
+	clearTimeout(client.heartbeat.timeout);
+
+	// schedule the next heartbeat
+	setTimeout(function() {
+		sendHeartbeat(clientId, 1);
+	}, heartbeatTime);
 }
 
 function requestStreamId(clientId) {
@@ -248,6 +266,9 @@ function removeClient(socket) {
 		return client.socket === socket;
 	});
 
+	// stop the heartbeats
+	if (client.heartbeat) clearTimeout(client.heartbeat.timeout);
+
 	// collect all subscriptions of that client
 	var streamIds = [];
 	streams.forEach(function(stream) {
@@ -281,6 +302,7 @@ function removeClient(socket) {
 	if (idx > -1) {
 		clients.splice(idx, 1);
 		console.log('Removed (%s) %s', client.username, client.id);
+		console.log('%d client(s) remaining', clients.length);
 	}
 }
 
@@ -309,13 +331,63 @@ function registerSenderOf(socket, message) {
 		}
 		clients.push(client);
 		console.log('Registered (%s) %s', client.username, client.id);
+
+		return client;
+	} else {
+		return getClientById(message.senderId);
 	}
+}
+
+function sendHeartbeat(clientId, attempt) {
+	var client = getClientById(clientId);
+	// client disconnected after this heartbeat was scheduled
+	if (!client) return;
+
+	var message = {
+		type: 'heartbeat'
+	}
+
+	sendMessageTo(clientId, message);
+
+	if (client.heartbeat) clearTimeout(client.heartbeat.timeout);
+
+	var timeout = setTimeout(function() {
+		heartbeatTimedOut(clientId);
+	}, heartbeatTimeout);
+
+	client.heartbeat = {
+		timeout: timeout,
+		attempt: attempt
+	}
+}
+
+function heartbeatTimedOut(clientId) {
+	var client = getClientById(clientId);
+	if (!client) {
+		console.log('Heartbeat timed out, but client is not registered anymore - %s', clientId);
+		return;
+	}
+
+	if (client.heartbeat.attempt >= heartbeatAttemptThreshold) {
+		// client is not responding, remove him
+		console.log('%s is not responding to heartbeats and will be removed', clientId);
+		try {
+			client.socket.close()
+		} catch (err) {
+			removeClient(client.socket);
+		}
+	} else {
+		// try again
+		var nextAttempt = client.heartbeat.attempt + 1;
+		sendHeartbeat(clientId, nextAttempt);
+	}
+
 }
 
 function isKnownSender(senderId) {
 	var client = getClientById(senderId);
 
-	return !(client === 'client-unknown');
+	return !!client;
 }
 
 function getClientById(id) {
@@ -325,7 +397,7 @@ function getClientById(id) {
 
 	if (!client) {
 		console.log('Client %s unknown', id);
-		return 'client-unknown';
+		return undefined;
 	}
 
 	return client;
@@ -334,7 +406,7 @@ function getClientById(id) {
 function broadcast(message) {
 	message = JSON.stringify(message);
 	clients.forEach(function(client) {
-		if (client.socket.readyState === client.socket.OPEN) {
+		if (client.socket && client.socket.readyState === client.socket.OPEN) {
 			client.socket.send(message);
 		}
 	});
@@ -350,7 +422,7 @@ function sendMessageTo(clientId, message) {
 	}
 
 	var str = JSON.stringify(message);
-	if (client.socket.readyState === client.socket.OPEN) {
+	if (client.socket && client.socket.readyState === client.socket.OPEN) {
 		client.socket.send(str);
 	}
 }
@@ -365,7 +437,7 @@ function forwardMessageToSubscribers(message) {
 		var client = getClientById(subscriber.id);
 
 		// send the message to him
-		if (client.socket.readyState === client.socket.OPEN) {
+		if (client.socket && client.socket.readyState === client.socket.OPEN) {
 			client.socket.send(JSON.stringify(message));
 		}
 	});
@@ -422,7 +494,7 @@ function sendTakeoverRequest(requesterId, streamId, callback) {
 	console.log('%s wants to take-over stream %s', requesterId, streamId);
 	var requester = getClientById(requesterId);
 
-	if (requester === 'client-unknown') {
+	if (!requester) {
 		callback('sender-unknown');
 		return;
 	}
@@ -522,6 +594,7 @@ function registerStreamIfUnknown(message) {
 
 module.exports = {
 	helloNetwork: helloNetwork,
+	handleHeartbeatResponse: handleHeartbeatResponse,
 	requestStreamId: requestStreamId,
 	subscribe: subscribe,
 	unsubscribe: unsubscribe,
