@@ -68,6 +68,8 @@ function helloNetwork(ws, message) {
 
 function handleHeartbeatResponse(clientId) {
 	var client = getClientById(clientId);
+	if (!client) return;
+
 	// stop the timer
 	clearTimeout(client.heartbeat.timeout);
 
