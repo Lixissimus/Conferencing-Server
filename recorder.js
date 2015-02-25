@@ -1,13 +1,35 @@
+var fs = require('fs');
+
 var streamBuffers = {};
 var bufferIndexes = {};
+var recordingDirs = {};
 
 // the bigger the number, the less index entries are created
 var indexPrecision = 10000;
+
+var recordingDir = './rec';
 
 function newStream(streamId) {
 	console.log('Recorder: Creating new recording buffer for Stream %s', streamId);
 	streamBuffers[streamId] = [];
 	bufferIndexes[streamId] = {};
+	recordingDirs[streamId] = false;
+
+	fs.exists(recordingDir, function(exists) {
+		if (!exists) {
+			fs.mkdir(recordingDir, createStreamRecordingDir);
+		} else {
+			createStreamRecordingDir();
+		}
+	});
+
+	function createStreamRecordingDir(then) {
+		var streamRecordingDir = recordingDir + '/Stream-' + streamId;
+		fs.mkdir(streamRecordingDir, function() {
+			recordingDirs[streamId] = streamRecordingDir;
+			if (then) then();
+		});
+	}
 
 	return streamBuffers[streamId];
 }
@@ -27,7 +49,23 @@ function recordFrame(frame) {
 	if (bufferIndexes[streamId][index] === undefined) {
 		bufferIndexes[streamId][index] = buffer.length;
 	}
+	var dir = recordingDirs[streamId];
+	if (dir) {
+		if (frame.type === 'image') {
+			// record image file for frame
+
+			var imageURL = frame.data;
+			var imageData = imageURL.split(',')[1];
+			var buffer = new Buffer(imageData, 'base64');
+			// fs.writeFile('images/data' + getCounter() + '.webp', buffer);
+
+			fs.writeFile(dir + '/' + frame.timestamp + '.webp', buffer, function(err) {
+				if (err) console.log(err);
+			});
+		}
+	}
 }
+
 
 function getDurationOfFrames(streamId, timestamp, length) {
 	// return an array of frames from timestamp for a timespan
