@@ -57,7 +57,6 @@ function recordFrame(frame) {
 			var imageURL = frame.data;
 			var imageData = imageURL.split(',')[1];
 			var buffer = new Buffer(imageData, 'base64');
-			// fs.writeFile('images/data' + getCounter() + '.webp', buffer);
 
 			fs.writeFile(dir + '/' + frame.timestamp + '.webp', buffer, function(err) {
 				if (err) console.log(err);
